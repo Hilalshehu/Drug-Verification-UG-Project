@@ -161,7 +161,7 @@
 </div>
 <div class="box" data-aos="zoom-in" data-aos-delay="200">
 <div class="icon" style="background:white;">
-<span class="iconify" data-icon="ion:checkmark-done" data-inline="false" data-width="50" data-height="50" style="color: #f058dc;"></span>
+<span class="iconify" data-icon="mdi:report" data-inline="false" data-width="50" data-height="50" style="color: #f058dc;"></span>
 </div>
 <h4 class="title"><a href="report.php">Report Drug</a></h4>
 <span class="material-symbols--report"></span>

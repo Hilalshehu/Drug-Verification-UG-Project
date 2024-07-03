@@ -4,297 +4,263 @@ require_once 'config/config.php';
 $token = bin2hex(openssl_random_pseudo_bytes(16));
 
 // If User has already logged in, redirect to dashboard page.
-if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === TRUE)
-{
-	header('Location: index.php');
+if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === TRUE) {
+    header('Location: index.php');
+    exit;
 }
 
+// If user has previously selected "remember me" option: 
+if (isset($_COOKIE['series_id']) && isset($_COOKIE['remember_token'])) {
+    // Get user credentials from cookies.
+    $series_id = filter_var($_COOKIE['series_id']);
+    $remember_token = filter_var($_COOKIE['remember_token']);
+    $db = getDbInstance();
+    // Get user By series ID: 
+    $db->where('series_id', $series_id);
+    $row = $db->getOne('admin_accounts');
 
+    if ($db->count >= 1) {
+        // User found. Verify remember token
+        if (password_verify($remember_token, $row['remember_token'])) {
+            // Verify if expiry time is modified. 
+            $expires = strtotime($row['expires']);
 
-// If user has previously selected "remember me option": 
-if (isset($_COOKIE['series_id']) && isset($_COOKIE['remember_token']))
-{
-	// Get user credentials from cookies.
-	$series_id = filter_var($_COOKIE['series_id']);
-	$remember_token = filter_var($_COOKIE['remember_token']);
-	$db = getDbInstance();
-	// Get user By series ID: 
-	$db->where('series_id', $series_id);
-	$row = $db->getOne('admin_accounts');
+            if (strtotime(date('Y-m-d H:i:s')) > $expires) {
+                // Remember Cookie has expired. 
+                clearAuthCookie();
+                header('Location: login.php');
+                exit;
+            }
 
-	if ($db->count >= 1)
-	{
-		// User found. verify remember token
-		if (password_verify($remember_token, $row['remember_token']))
-        {
-			// Verify if expiry time is modified. 
-			$expires = strtotime($row['expires']);
-
-			if (strtotime(date()) > $expires)
-			{
-				// Remember Cookie has expired. 
-				clearAuthCookie();
-				header('Location: login.php');
-				exit;
-			}
-
-			$_SESSION['user_logged_in'] = TRUE;
-			$_SESSION['admin_type'] = $row['admin_type'];
-			$_SESSION['user_name'] = $row['user_name'];
-			header('Location: index.php');
-			exit;
-		}
-		else
-		{
-			clearAuthCookie();
-			header('Location: login.php');
-			exit;
-		}
-	}
-	else
-	{
-		clearAuthCookie();
-		header('Location: login.php');
-		exit;
-	}
+            $_SESSION['user_logged_in'] = TRUE;
+            $_SESSION['admin_type'] = $row['admin_type'];
+            $_SESSION['user_name'] = $row['user_name'];
+            header('Location: index.php');
+            exit;
+        } else {
+            clearAuthCookie();
+            header('Location: login.php');
+            exit;
+        }
+    } else {
+        clearAuthCookie();
+        header('Location: login.php');
+        exit;
+    }
 }
 ?>
-<?php include BASE_PATH.'/includes/header.php'; ?>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<!-- <link href="css/login.css" rel="stylesheet"> -->
-<style>
-	@import url('https://fonts.googleapis.com/css?family=Raleway:400,700');
-
-* {
-	box-sizing: border-box;
-	margin: 0;
-	padding: 0;	
-	font-family: Raleway, sans-serif;
-}
-
-body {
-	background: linear-gradient(90deg, #C7C5F4, #776BCC);		
-}
-
-.container {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-}
-
-.screen {		
-	background: linear-gradient(90deg, #5D54A4, #7C78B8);		
-	position: relative;	
-	height: 600px;
-	width: 360px;	
-	box-shadow: 0px 0px 24px #5C5696;
-}
-
-.screen__content {
-	z-index: 1;
-	position: relative;	
-	height: 100%;
-}
-
-.screen__background {		
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 0;
-	-webkit-clip-path: inset(0 0 0 0);
-	clip-path: inset(0 0 0 0);	
-}
-
-.screen__background__shape {
-	transform: rotate(45deg);
-	position: absolute;
-}
-
-.screen__background__shape1 {
-	height: 520px;
-	width: 520px;
-	background: #FFF;	
-	top: -50px;
-	right: 120px;	
-	border-radius: 0 72px 0 0;
-}
-
-.screen__background__shape2 {
-	height: 220px;
-	width: 220px;
-	background: #6C63AC;	
-	top: -172px;
-	right: 0;	
-	border-radius: 32px;
-}
-
-.screen__background__shape3 {
-	height: 540px;
-	width: 190px;
-	background: linear-gradient(270deg, #5D54A4, #6A679E);
-	top: -24px;
-	right: 0;	
-	border-radius: 32px;
-}
-
-.screen__background__shape4 {
-	height: 400px;
-	width: 200px;
-	background: #7E7BB9;	
-	top: 420px;
-	right: 50px;	
-	border-radius: 60px;
-}
-
-.login {
-	width: 320px;
-	padding: 30px;
-	padding-top: 156px;
-}
-
-.login__field {
-	padding: 20px 0px;	
-	position: relative;	
-}
-
-.login__icon {
-	position: absolute;
-	top: 30px;
-	color: #7875B5;
-}
-
-.login__input {
-	border: none;
-	border-bottom: 2px solid #D1D1D4;
-	background: none;
-	padding: 10px;
-	padding-left: 24px;
-	font-weight: 700;
-	width: 75%;
-	transition: .2s;
-}
-
-.login__input:active,
-.login__input:focus,
-.login__input:hover {
-	outline: none;
-	border-bottom-color: #6A679E;
-}
-
-.login__submit {
-	background: #fff;
-	font-size: 14px;
-	margin-top: 30px;
-	padding: 16px 20px;
-	border-radius: 26px;
-	border: 1px solid #D4D3E8;
-	text-transform: uppercase;
-	font-weight: 700;
-	display: flex;
-	align-items: center;
-	width: 100%;
-	color: #4C489D;
-	box-shadow: 0px 2px 2px #5C5696;
-	cursor: pointer;
-	transition: .2s;
-}
-
-.login__submit:active,
-.login__submit:focus,
-.login__submit:hover {
-	border-color: #6A679E;
-	outline: none;
-}
-
-.button__icon {
-	font-size: 24px;
-	margin-left: auto;
-	color: #7875B5;
-}
-
-.social-login {	
-	position: absolute;
-	height: 140px;
-	width: 160px;
-	text-align: center;
-	bottom: 0px;
-	right: 0px;
-	color: #fff;
-}
-
-.social-icons {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.social-login__icon {
-	padding: 20px 10px;
-	color: #fff;
-	text-decoration: none;	
-	text-shadow: 0px 0px 8px #7875B5;
-}
-
-.social-login__icon:hover {
-	transform: scale(1.5);	
-}
-</style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <meta charset="UTF-8">
+    <title>NAFDAC Online Drug Verification System - Login</title>
+    <link rel="icon" href="img/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Include necessary meta tags, CSS files, and Google Fonts from home.html -->
+    <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/vendor/font-awesome/css/font-awesome.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Montserrat:300,400,500,600,700" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(90deg, #e0eafc, #cfdef3);
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            position: relative;
+        }
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+        .container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 60px); /* Adjust based on header height */
+            margin-top: 60px; /* Adjust based on header height */
+        }
+        .screen {
+            background: #ffffff;
+            position: relative;
+            width: 360px;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .screen__content {
+            position: relative;
+        }
+        .login {
+            width: 100%;
+        }
+        .login__field {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .login__icon {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        .login__input {
+            border: 1px solid #ced4da;
+            border-radius: 30px;
+            padding: 10px 15px;
+            padding-left: 50px;
+            font-size: 16px;
+            width: calc(100% - 35px);
+            transition: border-color 0.3s ease;
+        }
+        .login__input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .login__submit {
+            background: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+        .login__submit:hover {
+            background-color: #0056b3;
+        }
+        .social-login {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .social-login h3 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #333;
+        }
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .social-login__icon {
+            font-size: 24px;
+            color: #007bff;
+            transition: color 0.3s ease;
+        }
+        .social-login__icon:hover {
+            color: #0056b3;
+        }
+        .screen__background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .screen__background__shape {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(0, 123, 255, 0.1);
+            transition: transform 2s ease-in-out;
+        }
+        .screen__background__shape1 {
+            width: 200px;
+            height: 200px;
+            top: -50px;
+            right: -100px;
+        }
+        .screen__background__shape2 {
+            width: 250px;
+            height: 250px;
+            top: 50%;
+            left: -100px;
+        }
+        .screen__background__shape3 {
+            width: 300px;
+            height: 300px;
+            top: 70%;
+            right: -150px;
+        }
+        .screen__background__shape4 {
+            width: 150px;
+            height: 150px;
+            top: 10%;
+            left: 70%;
+        }
+    </style>
 </head>
-	<!--  particles  -->
-	<!-- <div id="particles-js"></div> -->
-	<!-- //particles -->
-	
+<body>
+    <!-- Back Button -->
+    <button class="back-button" onclick="window.history.back();">
+        <i class="fa fa-arrow-left"></i> Back
+    </button>
 
-
-	   
     <div class="container">
-	
         <div class="screen">
-		
             <div class="screen__content">
                 <form class="login" method="POST" action="authenticate.php">
                     <div class="login__field">
-                        <i class="login__icon fas fa-user-alt"></i>
-                        <input type="email" name="username" class="login__input" placeholder="User Name" required="">
+                        <i class="login__icon fa fa-user"></i>
+                        <input type="email" name="username" class="login__input" placeholder="Username" required>
                     </div>
                     <div class="login__field">
-                        <i class="login__icon fas fa-lock"></i>
-                        <input type="password" class="login__input" name="password" placeholder="Password" id="myInput" required="">
+                        <i class="login__icon fa fa-lock"></i>
+                        <input type="password" class="login__input" name="password" placeholder="Password" id="myInput" required>
                     </div>
 
-					<?php if (isset($_SESSION['login_failure'])): ?>
-				<div class="alert alert-danger alert-dismissable fade in">
-					<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
-				<?php
-					echo $_SESSION['login_failure'];
-					unset($_SESSION['login_failure']);
-				?>
-				</div>
-				<?php endif; ?>
-                    <button class="button login__submit" type="submit" value="LOGIN">
-                        <span class="button__text">Log In Now</span>
-                        <i class="button__icon fas fa-chevron-right"></i>
-                    </button>				
+                    <?php if (isset($_SESSION['login_failure'])): ?>
+                    <div class="alert alert-danger alert-dismissable fade in">
+                        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                        <?php
+                        echo $_SESSION['login_failure'];
+                        unset($_SESSION['login_failure']);
+                        ?>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <button class="login__submit" type="submit">
+                        Log In Now
+                    </button>
                 </form>
                 <div class="social-login">
-                    <h3>Nafdac</h3>
+                    <h3>Follow Us</h3>
                     <div class="social-icons">
-                        <a href="#" class="social-login__icon fab fa-instagram"></a>
-                        <a href="#" class="social-login__icon fab fa-facebook"></a>
-                        <a href="#" class="social-login__icon fab fa-twitter"></a>
+                        <a href="#" class="social-login__icon fa fa-instagram"></a>
+                        <a href="#" class="social-login__icon fa fa-facebook"></a>
+                        <a href="#" class="social-login__icon fa fa-twitter"></a>
                     </div>
                 </div>
             </div>
             <div class="screen__background">
-                <span class="screen__background__shape screen__background__shape4"></span>
-                <span class="screen__background__shape screen__background__shape3"></span>		
-                <span class="screen__background__shape screen__background__shape2"></span>
                 <span class="screen__background__shape screen__background__shape1"></span>
-            </div>		
+                <span class="screen__background__shape screen__background__shape2"></span>
+                <span class="screen__background__shape screen__background__shape3"></span>
+                <span class="screen__background__shape screen__background__shape4"></span>
+            </div>
         </div>
     </div>
-<?php include BASE_PATH.'/includes/footer.php'; ?>
+    <!-- Vendor JS Files -->
+    <script src="assets/vendor/jquery/jquery.min.js"></script>
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

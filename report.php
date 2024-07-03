@@ -35,30 +35,30 @@
         <div class="col-lg-6">
           <div class="form">
             <h4>Report Drug</h4>
-            <p>Please fill out the form below to file report.</p>
-            <form action="report.php" method="post" role="form" class="php-email-form" onsubmit="return validateForm()">
+            <p>Please fill out the form below to file a report.</p>
+            <form action="report.php" method="post" role="form" class="php-email-form">
               <div class="form-group">
-                <input type="text" name="fName" class="form-control" id="name" placeholder="Your Name" required data-rule="minlen:4" data-msg="Please enter at least 4 chars" />
+                <input type="text" name="fName" class="form-control" id="name" placeholder="Your Name" required minlength="4" />
                 <div class="validate"></div>
               </div>
               <div class="form-group">
-                <input type="text" name="reportDrug" class="form-control" id="reportDrug" placeholder="Drug Name" required data-rule="minlen:4" data-msg="Please enter at least 4 chars" />
+                <input type="text" name="reportDrug" class="form-control" id="reportDrug" placeholder="Drug Name" required minlength="4" />
                 <div class="validate"></div>
               </div>
               <div class="form-group">
-                <input type="text" name="reportManufacturer" class="form-control" id="reportManufacturer" placeholder="Drug Manufacturer" required data-rule="minlen:4" data-msg="Please enter at least 4 chars" />
+                <input type="text" name="reportManufacturer" class="form-control" id="reportManufacturer" placeholder="Drug Manufacturer" required minlength="4" />
                 <div class="validate"></div>
               </div>
               <div class="form-group">
-                <input type="text" name="reportLocation" class="form-control" id="reportLocation" placeholder="Purchase Location" required data-rule="minlen:4" data-msg="Please enter at least 4 chars" />
+                <input type="text" name="reportLocation" class="form-control" id="reportLocation" placeholder="Purchase Location" required minlength="4" />
                 <div class="validate"></div>
               </div>
               <div class="form-group">
-                <input type="tel" name="reportPhone" class="form-control" id="reportPhone" placeholder="Your phone number (digits only)" pattern="[0-9]{10}" required data-rule="minlen:10" data-msg="Please enter at least 10 digits" />
+                <input type="tel" name="reportPhone" class="form-control" id="reportPhone" placeholder="Your phone number (digits only)" pattern="[0-9]{10}" required minlength="10" />
                 <div class="validate"></div>
               </div>
               <div class="mb-3">
-                <div class="error-message" style="background-color: lime;"></div>
+                <div class="error-message" style="color: red;"></div>
                 <div class="sent-message">Your message has been sent. Thank you!</div>
               </div>
               <div class="text-center"><button type="submit" title="Send Message">Send Report</button></div>
@@ -84,27 +84,56 @@
 
   <!-- Custom Script for Form Submission -->
   <script>
-    function validateForm() {
-      // Your additional validation logic can go here before submitting the form
-
-      // Example: You can check if the form data is valid and return true/false accordingly
-
-      // For now, always return true to allow form submission
-      return true;
-    }
-
     $(document).ready(function() {
       $('.sent-message').hide(); // Hide the sent message initially
 
       // Handle form submission
       $('.php-email-form').submit(function(event) {
         event.preventDefault(); // Prevent the default form submission
-
-        // Perform AJAX submission or other processing here
-        // For demonstration, we'll just show the sent message after a delay
-        $('.sent-message').fadeIn().delay(3000).fadeOut(); // Show message for 3 seconds
-        this.reset(); // Reset the form after submission (optional)
+        
+        // Validate the form fields
+        if (validateForm()) {
+          var form = $(this);
+          $.ajax({
+            url: form.attr('action'),
+            type: form.attr('method'),
+            data: form.serialize(),
+            success: function(response) {
+              $('.sent-message').fadeIn().delay(3000).fadeOut(); // Show message for 3 seconds
+              form.trigger('reset'); // Reset the form after submission
+            },
+            error: function() {
+              $('.error-message').text('An error occurred. Please try again later.');
+            }
+          });
+        }
       });
+
+      function validateForm() {
+        var isValid = true;
+
+        // Basic validation checks
+        $('.form-control').each(function() {
+          var input = $(this);
+          if (input.val().length < 4) {
+            isValid = false;
+            input.siblings('.validate').text('Please enter at least 4 characters.');
+          } else {
+            input.siblings('.validate').text('');
+          }
+        });
+
+        // Validate phone number
+        var phone = $('#reportPhone').val();
+        if (!/^\d{10}$/.test(phone)) {
+          isValid = false;
+          $('#reportPhone').siblings('.validate').text('Please enter a valid 10-digit phone number.');
+        } else {
+          $('#reportPhone').siblings('.validate').text('');
+        }
+
+        return isValid;
+      }
     });
   </script>
 
